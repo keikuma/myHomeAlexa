@@ -1,0 +1,49 @@
+{
+  "manifest": {
+    "apis": {
+      "custom": {
+        "endpoint": {
+          "uri": "myHomeServer",
+          "sourceDir": "lambda\\ap-northeast-1_myHomeServer/lambda_upload"
+        },
+        "interfaces": [
+          {
+            "type": "AUDIO_PLAYER"
+          }
+        ]
+      }
+    },
+    "manifestVersion": "1.0",
+    "privacyAndCompliance": {
+      "locales": {
+        "ja-JP": {}
+      },
+      "allowsPurchases": false,
+      "usesPersonalInfo": false,
+      "isChildDirected": false,
+      "isExportCompliant": true,
+      "containsAds": false
+    },
+    "publishingInformation": {
+      "locales": {
+        "ja-JP": {
+          "name": "おうちサーバー",
+          "summary": "おうちサーバー",
+          "description": "自宅サーバーを通じていくつかのことをします。",
+          "examplePhrases": [
+            "アレクサ、おうちサーバーで山下達郎の曲をかけて",
+            "アレクサ、おうちサーバーを開いて",
+            "アレクサ、おうちサーバーでおやすみモードに"
+          ],
+          "keywords": []
+        }
+      },
+      "isAvailableWorldwide": false,
+      "testingInstructions": "",
+      "category": "SMART_HOME",
+      "distributionCountries": [
+        "JP"
+      ]
+    }
+  }
+}

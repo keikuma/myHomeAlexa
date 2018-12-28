@@ -62,3 +62,4 @@ typings/
 
 # Python venv
 .venv
+lambda/py/lambda_upload

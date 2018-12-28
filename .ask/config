@@ -1,0 +1,33 @@
+{
+  "deploy_settings": {
+    "default": {
+      "skill_id": "amzn1.ask.skill.a0b1402a-e4e8-4e89-816f-557992439bc5",
+      "was_cloned": true,
+      "merge": {},
+      "resources": {
+        "manifest": {
+          "eTag": "9ab49cfcadf99b0a3cce0e4612963cca"
+        },
+        "interactionModel": {
+          "ja-JP": {
+            "eTag": "4f51634a52b1bb7d219dff7c4bcd9a82"
+          }
+        },
+        "lambda": [
+          {
+            "arn": "arn:aws:lambda:ap-northeast-1:891101950329:function:myHomeServer",
+            "awsRegion": "ap-northeast-1",
+            "functionName": "myHomeServer",
+            "alexaUsage": [
+              "custom/default"
+            ],
+            "revisionId": "cbb0f0b0-5adb-4c4f-b5a1-ed050d2be234",
+            "codeUri": "lambda/ap-northeast-1_myHomeServer",
+            "handler": "lambda_function.lambda_handler",
+            "runtime": "python3.7"
+          }
+        ]
+      }
+    }
+  }
+}
