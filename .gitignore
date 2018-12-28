@@ -63,3 +63,10 @@ typings/
 # Python venv
 .venv
 lambda/py/lambda_upload
+
+# 中間ファイル
+musicdb/iTunes_list.txt
+musicdb/list.json
+musicdb/translate.json
+musicdb/word.txt
+musicdb/words.json
