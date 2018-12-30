@@ -22,7 +22,7 @@
               "custom/default"
             ],
             "revisionId": "cbb0f0b0-5adb-4c4f-b5a1-ed050d2be234",
-            "codeUri": "lambda/ap-northeast-1_myHomeServer",
+            "codeUri": "lambda/py",
             "handler": "lambda_function.lambda_handler",
             "runtime": "python3.7"
           }

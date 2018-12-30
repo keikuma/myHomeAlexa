@@ -70,3 +70,6 @@ musicdb/list.json
 musicdb/translate.json
 musicdb/word.txt
 musicdb/words.json
+
+# デプロイパッケージ
+package.zip

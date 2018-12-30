@@ -4,9 +4,18 @@ url = "https://pypi.org/simple"
 verify_ssl = true
 
 [dev-packages]
+boto3 = "*"
+awscli = "*"
+pylint = "*"
 
 [packages]
 ask-sdk = "*"
+awscli = "*"
+pylint = "*"
+astroid = "*"
 
 [requires]
 python_version = "3.7"
+
+[pipenv]
+allow_prereleases = true

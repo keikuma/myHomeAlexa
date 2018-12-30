@@ -9,7 +9,16 @@
             "type": "python",
             "request": "launch",
             "program": "${file}",
-            "console": "integratedTerminal"
+            "console": "integratedTerminal",
+            "cwd": "${workspaceRoot}",
+            "env": {},
+            "envFile": "${workspaceRoot}/.env",
+            "args": [
+                "-i", "musicdb/list.json",
+                "-o", "models/ja-JP.json",
+                "-s", "おうちサーバー",
+                "-d", "lambda/py/data/database.json"
+            ]
         },
         {
             "name": "Python: Attach",

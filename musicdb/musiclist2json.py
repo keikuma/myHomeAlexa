@@ -1,6 +1,10 @@
 #!/usr/bin/env python3
 # -*- coding:utf-8 -*-
 
+"""
+beets の出力から、可能な限りの情報を収集して、後処理用のJSONファイルを生成する
+"""
+
 import re
 import os
 import codecs
@@ -9,13 +13,18 @@ import json
 import unicodedata
 import itertools
 
+# pylint: disable-msg=C0301
+
 # iTunes music title list format:
+#
 # [path]\t[albumartist]\t[album]\t[artist]\t[track]\t[title]\t[mb_albumartistid]\t[mb_albumid]\t[mb_artistid]\t[mb_trackid]\n
 #
 # https://github.com/beetbox/beets
 # beet import -CWA "$HOME/Music/iTunes/iTunes Media/Music/"
 # fmt=`echo -e '$path\t$albumartist\t$album\t$artist\t$track\t$title\t$mb_albumartistid\t$mb_albumid\t$mb_artistid\t$mb_trackid'`
 # beet list -f "$fmt"
+
+# pylint: enable-msg=C0301
 
 def isReadable(s):
     s = re.sub(r"\s+", " ", s)
@@ -25,7 +34,7 @@ def isReadable(s):
         return False
     conv = codecs.encode(s, 'cp932', errors='replace')
     conv2 = codecs.decode(conv, 'cp932')
-    n = len(re.findall('\?', conv2)) - len(re.findall('\?', s))
+    n = len(re.findall(r'\?', conv2)) - len(re.findall(r'\?', s))
     if n > len(s) * 0.2:
         return False
     return True
@@ -81,13 +90,14 @@ with open(args.list, "rt", encoding='utf-8') as f:
     for line in f:
         line = line.rstrip('\n')
         line = line.rstrip('\r')
-        path, albumartist, album, artist, track, title, albumartist_id, album_id, artist_id, title_id = line.split('\t')
+        (path, albumartist, album, artist, track, title,
+         albumartist_id, album_id, artist_id, title_id) = line.split('\t')
         path = unicodedata.normalize('NFC', path)
         path_list = split_path(path)
         if args.pathdrop:
             path_list = path_list[args.pathdrop:]
         path = path_parser.join(*path_list)
-        dir, fname = path_parser.split(path)
+        dirname, fname = path_parser.split(path)
         base, ext = path_parser.splitext(fname)
         res = re.match(r"^([0-9\-]+)\s", fname)
         if res:
@@ -109,14 +119,17 @@ with open(args.list, "rt", encoding='utf-8') as f:
                 artist = albumartist
             album = unicodedata.normalize('NFKC', album)
             title = unicodedata.normalize('NFKC', title)
-            musicList.append({'path': path, 'albumartist': albumartist, 'album': album, 'artist': artist, 'track': track, 'title':title, 'albumartist_id': albumartist_id, 'album_id': album_id, 'artist_id': artist_id, 'title_id': title_id })
-            if (albumartist_id and albumartist and not (albumartist_id in artistDict)):
+            musicList.append({'path': path, 'albumartist': albumartist, 'album': album,
+                              'artist': artist,
+                              'track': track, 'title':title, 'albumartist_id': albumartist_id,
+                              'album_id': album_id, 'artist_id': artist_id, 'title_id': title_id})
+            if (albumartist_id and albumartist and not albumartist_id in artistDict):
                 artistDict[albumartist] = {'id': albumartist_id}
-            if (artist_id and not (artist_id in artistDict)):
+            if (artist_id and not artist_id in artistDict):
                 artistDict[artist] = {'id': artist_id}
-            if (album_id and not (album_id in albumDict)):
+            if (album_id and not album_id in albumDict):
                 albumDict[album] = {'id': album_id}
-            if (title_id and not (title_id in titleDict)):
+            if (title_id and not title_id in titleDict):
                 titleDict[title] = {'id': title_id}
 
 for m in musicList:
@@ -144,7 +157,9 @@ for m in musicList:
             albumId += 1
     if not m['album'] in albums:
         albumDict[m['album']] = {'id': m['album_id']}
-        albums[m['album']] = {'id': m['album_id'], 'title': {} }
+        albums[m['album']] = {
+            'id': m['album_id'], 'albumartist_id': m['albumartist_id'], 'title':{}
+        }
     titles = albums[m['album']]['title']
     if not m['title_id']:
         if m['title'] in titles:
@@ -154,15 +169,19 @@ for m in musicList:
             titleId += 1
     if not m['title'] in titles:
         titleDict[title] = {'id': m['title_id']}
-        if (re.match(r"(Karaoke|karaoke|KARAOKE|less vocal|カラオケ)", m['title'])):
+        if re.match(r"(Karaoke|karaoke|KARAOKE|less vocal|カラオケ)", m['title']):
             iskaraoke = True
         else:
             iskaraoke = False
-        titles[m['title']] = {'id': m['title_id'], 'artist': m['artist'], 'artist_id': m['artist_id'], 'track': m['track'], 'karaoke':iskaraoke, 'path': m['path']}
+        titles[m['title']] = {
+            'id': m['title_id'], 'artist': m['artist'], 'artist_id': m['artist_id'],
+            'track': m['track'], 'karaoke':iskaraoke, 'path': m['path'],
+            'album_id': m['album_id'], 'albumartist_id': m['albumartist_id']
+        }
 
 if not args.dict:
     words = set()
-    for name in (artistDict.keys() | albumDict.keys() | titleDict.keys()):
+    for name in artistDict.keys() | albumDict.keys() | titleDict.keys():
         arr = re.findall(r"[!-~]+", name)
         for w in arr:
             words |= set(word_trim(w))
@@ -179,4 +198,4 @@ else:
         entry['yomi'] = yomi
     data = {'artist': artistDict, 'album': albumDict, 'title': titleDict, 'music': musicDict}
     with open(args.output, "wt", encoding='utf-8', newline='\n') as f:
-        json.dump(data, f, ensure_ascii=False, sort_keys=True, indent=4)
+        json.dump(data, f, ensure_ascii=False, sort_keys=True)
