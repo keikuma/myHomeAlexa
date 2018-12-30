@@ -25,7 +25,6 @@ class MusicDb:
         path = os.path.join(dirname, 'data', 'simstring.db')
         with open(path, 'rb') as db_file_pointer:
             self.simstring_db = pickle.load(db_file_pointer)
-        print(type(self.simstring_db))
         self.sercher = {}
         for item in ['artist', 'album', 'title']:
             self.sercher[item] = Searcher(self.simstring_db[item], JaccardMeasure())
@@ -101,6 +100,43 @@ class MusicDb:
                 return entry_id
         return entry_id
 
+    def get_entry_list_by_name(self, entry_type, entry_name, level=0):
+        """ 名前からIDのリストを得る """
+
+        entry_list = []
+        # 完全マッチ
+        entry_dict = self.data_base[entry_type]
+        entry = entry_dict.get(entry_name, None)
+        if entry:
+            entry_list.append(entry['id'])
+        if level > 3:
+            return None
+
+        # 読み正規化マッチ
+        norm_name = util.yomi_normalize(entry_name)
+        entry = entry_dict.get(norm_name, None)
+        if entry:
+            entry_list.append(entry['id'])
+        if level > 2:
+            return None
+
+        # SimString検索
+        indexes = self.sercher[entry_type].ranked_search(entry_name, 0.3)
+        if indexes:
+            entry_list.extend([entry_dict[index[1]]['id'] for index in indexes])
+        if level > 1:
+            return None
+
+        # 全文検索
+        entry_id_list = []
+        for key, value in entry_dict.items():
+            if entry_name in key:
+                entry_id_list.append({'id': value['id'], 'priority': value['priority']})
+            if norm_name in key:
+                entry_id_list.append({'id': value['id'], 'priority': value['priority'] + 10})
+        entry_list.extend([entry['id'] for entry in sorted(entry_id_list, key=lambda entry: entry['priority'])])
+        return entry_list
+
     def get_artist_by_name(self, artist_name, level=0):
         """ アーティスト名から Artist ID を得る """
         return self.get_entry_by_name('artist', artist_name, level)
@@ -109,9 +145,21 @@ class MusicDb:
         """ アルバム名から Album ID を得る """
         return self.get_entry_by_name('album', album_name, level)
 
-    def get_title_by_name(self, title_name, level=0):
+    def get_title_by_name(self, title_name, level=0, artist_name=None):
         """ タイトル名から Title ID を得る """
-        return self.get_entry_by_name('title', title_name, level)
+        if artist_name:
+            artist_id = self.get_artist_by_name(artist_name)
+            if not artist_id:
+                return None
+            artist = self.get_artist_by_id(artist_id)
+            artist_title_list = artist['title']
+            title_list = self.get_entry_list_by_name('title', title_name, level)
+            matched_list = list(set(artist_title_list) & set(title_list))
+            if matched_list:
+                return matched_list[0]
+        else:
+            return self.get_entry_by_name('title', title_name, level)
+        return
 
 def module_test():
     """ module test """
