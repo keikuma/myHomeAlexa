@@ -17,11 +17,11 @@ import itertools
 
 # iTunes music title list format:
 #
-# [path]\t[albumartist]\t[album]\t[artist]\t[track]\t[title]\t[mb_albumartistid]\t[mb_albumid]\t[mb_artistid]\t[mb_trackid]\n
+# [path]\t[albumartist]\t[album]\t[artist]\t[disc]\t[track]\t[title]\t[mb_albumartistid]\t[mb_albumid]\t[mb_artistid]\t[mb_trackid]\n
 #
 # https://github.com/beetbox/beets
 # beet import -CWA "$HOME/Music/iTunes/iTunes Media/Music/"
-# fmt=`echo -e '$path\t$albumartist\t$album\t$artist\t$track\t$title\t$mb_albumartistid\t$mb_albumid\t$mb_artistid\t$mb_trackid'`
+# fmt=`echo -e '$path\t$albumartist\t$album\t$artist\t$disc\t$track\t$title\t$mb_albumartistid\t$mb_albumid\t$mb_artistid\t$mb_trackid'`
 # beet list -f "$fmt"
 
 # pylint: enable-msg=C0301
@@ -90,7 +90,7 @@ with open(args.list, "rt", encoding='utf-8') as f:
     for line in f:
         line = line.rstrip('\n')
         line = line.rstrip('\r')
-        (path, albumartist, album, artist, track, title,
+        (path, albumartist, album, artist, disc, track, title,
          albumartist_id, album_id, artist_id, title_id) = line.split('\t')
         path = unicodedata.normalize('NFC', path)
         path_list = split_path(path)
@@ -119,9 +119,8 @@ with open(args.list, "rt", encoding='utf-8') as f:
                 artist = albumartist
             album = unicodedata.normalize('NFKC', album)
             title = unicodedata.normalize('NFKC', title)
-            musicList.append({'path': path, 'albumartist': albumartist, 'album': album,
-                              'artist': artist,
-                              'track': track, 'title':title, 'albumartist_id': albumartist_id,
+            musicList.append({'path': path, 'albumartist': albumartist, 'album': album, 'artist': artist,
+                              'disc': disc, 'track': track, 'title':title, 'albumartist_id': albumartist_id,
                               'album_id': album_id, 'artist_id': artist_id, 'title_id': title_id})
             if (albumartist_id and albumartist and not albumartist_id in artistDict):
                 artistDict[albumartist] = {'id': albumartist_id}
@@ -175,7 +174,7 @@ for m in musicList:
             iskaraoke = False
         titles[m['title']] = {
             'id': m['title_id'], 'artist': m['artist'], 'artist_id': m['artist_id'],
-            'track': m['track'], 'karaoke':iskaraoke, 'path': m['path'],
+            'disc': m['disc'], 'track': m['track'], 'karaoke':iskaraoke, 'path': m['path'],
             'album_id': m['album_id'], 'albumartist_id': m['albumartist_id']
         }
 

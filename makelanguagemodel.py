@@ -9,13 +9,17 @@ import re
 import unicodedata
 import argparse
 import json
+import pickle
 from collections import defaultdict
+from simstring.feature_extractor.character_ngram import CharacterNgramFeatureExtractor
+from simstring.database.dict import DictDatabase
 
 parser = argparse.ArgumentParser()
 parser.add_argument("-s", "--skill", help="skill invocationName", type=str)
 parser.add_argument("-i", "--input", help="music json file", type=str)
 parser.add_argument("-o", "--output", help="output languageModel json file", type=str)
 parser.add_argument("-d", "--database", help="output database for skill json file", type=str)
+parser.add_argument("-p", "--pickle", help="output for SimString pickled database", type=str)
 parser.add_argument("--debug", help="for debug", action='count')
 args = parser.parse_args()
 
@@ -29,37 +33,35 @@ with open(args.input, encoding='utf-8') as f:
 
 re_hiragana = re.compile(r'[ぁ-ゔ]')
 def yomi_normalize(s):
+    """ かな読みの正規化を行う """
     s = ''.join([i for i in list(s) if re.match(r"^(L|N)", unicodedata.category(i)[0])])
     s = re_hiragana.sub(lambda x: chr(ord(x.group(0)) + ord('ァ') - ord('ぁ')), s)
-    s = re.sub(r'ー', '', s)
-    s = re.sub(r'ヰ', 'イ', s)
-    s = re.sub(r'ヱ', 'エ', s)
-    s = re.sub(r'ヂ', 'ジ', s)
-    s = re.sub(r'ヅ', 'ズ', s)
-    s = re.sub(r'ヮ', 'ア', s)
-    s = re.sub(r'ツィ', 'チ', s)
-    s = re.sub(r'ティ', 'チ', s)
-    s = re.sub(r'ク(サ|シ|ス|ソ)', 'キ\1', s)
-    s = re.sub(r'ヴ(ァ|ア)', 'バ', s)
-    s = re.sub(r'ヴ(ィ|イ)', 'ビ', s)
-    s = re.sub(r'ヴ(ェ|エ)', 'ベ', s)
-    s = re.sub(r'ヴ(ォ|オ)', 'ボ', s)
-    s = re.sub(r'ファ', 'ハ', s)
-    s = re.sub(r'フィ', 'ヒ', s)
-    s = re.sub(r'フェ', 'ヘ', s)
-    s = re.sub(r'フォ', 'ホ', s)
-    s = re.sub(r'グァ', 'ガ', s)
-    s = re.sub(r'シェ', 'セ', s)
-    s = re.sub(r'ジェ', 'ゼ', s)
-    s = re.sub(r'ファ', 'ハ', s)
-    s = re.sub(r'トゥ', 'ト', s)
-    s = re.sub(r'ツ', 'ト', s)
-    s = re.sub(r'ドゥ', 'ド', s)
-    s = re.sub(r'ドゥ', 'ズ', s)
-    s = re.sub(r'デュ', 'ジュ', s)
-    s = re.sub(r'テュ', 'チュ', s)
-    s = re.sub(r'イェ', 'エ', s)
-    s = re.sub(r'ッ', '', s)
+    s = re.sub(r'ー', r'', s)
+    s = re.sub(r'ヰ', r'イ', s)
+    s = re.sub(r'ヱ', r'エ', s)
+    s = re.sub(r'ヂ', r'ジ', s)
+    s = re.sub(r'ヅ', r'ズ', s)
+    s = re.sub(r'ヮ', r'ア', s)
+    s = re.sub(r'(ツ|テ)ィ', r'チ', s)
+    s = re.sub(r'ク(サ|シ|ス|ソ)', r'キ\1', s)
+    s = re.sub(r'ヴ(ァ|ア)', r'バ', s)
+    s = re.sub(r'ヴ(ィ|イ)', r'ビ', s)
+    s = re.sub(r'ヴ(ェ|エ)', r'ベ', s)
+    s = re.sub(r'ヴ(ォ|オ)', r'ボ', s)
+    s = re.sub(r'ファ', r'ハ', s)
+    s = re.sub(r'フィ', r'ヒ', s)
+    s = re.sub(r'フェ', r'ヘ', s)
+    s = re.sub(r'フォ', r'ホ', s)
+    s = re.sub(r'グァ', r'ガ', s)
+    s = re.sub(r'シェ', r'セ', s)
+    s = re.sub(r'ジェ', r'ゼ', s)
+    s = re.sub(r'トゥ', r'ト', s)
+    s = re.sub(r'ツ', r'ト', s)
+    s = re.sub(r'ドゥ', r'ド', s)
+    s = re.sub(r'デュ', r'ジュ', s)
+    s = re.sub(r'テュ', r'チュ', s)
+    s = re.sub(r'イェ', r'エ', s)
+    s = re.sub(r'ッ', r'', s)
     return s
 
 artistdict = mdb['artist']
@@ -278,7 +280,8 @@ if args.database:
         entry['album'] = list(entry['album'])
         entry['title'] = list(entry['title'])
     for entry in musicdb['album'].values():
-        entry['title'] = list(entry['title'])
+        sort_temp = sorted(entry['title'], key=lambda id: musicdb['title'][id]['track'])
+        entry['title'] = sorted(sort_temp, key=lambda id: musicdb['title'][id]['disc'])
 
     # json出力
     output = {'artist': artistYomiDict,
@@ -290,3 +293,19 @@ if args.database:
             json.dump(output, f, ensure_ascii=False, sort_keys=False, indent=4)
         else:
             json.dump(output, f, ensure_ascii=False, sort_keys=False)
+
+    # SimString 辞書
+    if args.pickle:
+        with open(args.pickle, "wb") as fw_simstring:
+            artist_db = DictDatabase(CharacterNgramFeatureExtractor(2))
+            for yomi in artistYomiDict.keys():
+                artist_db.add(yomi)
+            album_db = DictDatabase(CharacterNgramFeatureExtractor(2))
+            for yomi in albumYomiDict.keys():
+                album_db.add(yomi)
+            title_db = DictDatabase(CharacterNgramFeatureExtractor(2))
+            for yomi in titleYomiDict.keys():
+                title_db.add(yomi)
+            simstring_dict = { 'artist': artist_db, 'album': album_db, 'title': title_db}
+            pickle.dump(simstring_dict, fw_simstring, pickle.HIGHEST_PROTOCOL)
+

@@ -21,7 +21,11 @@ class PlayMusic:
         return
 
     def get_albumlist_by_id(self, album_id):
+        """
+        アルバム内の楽曲ID Listを得る
+        """
         album = self.music_db.get_album_by_id(album_id)
+        
 
 
 
@@ -40,7 +44,6 @@ class PlayMusic:
 
             
                 
-        print()
 
 def module_test():
     """
