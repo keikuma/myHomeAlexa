@@ -39,6 +39,7 @@ sb = SkillBuilder()
 #logging.basicConfig(level=loglevel)
 logger = util.get_logger(__name__)
 
+
 # Built-in Intent Handlers
 class PlayMusicHandler(AbstractRequestHandler):
     """Handler for Skill Launch and GetNewFact Intent."""
