@@ -15,15 +15,15 @@ def get_logger(name, level=None):
     loglevel = getattr(logging, os.environ.get('LOG_LEVEL', '').upper(), logging.INFO)
     logging.basicConfig(level=loglevel)
     logger = logging.getLogger(name)
-    if level:
-        logger.setLevel(level)
+    if loglevel:
+        logger.setLevel(loglevel)
     return logger
 
-re_hiragana = re.compile(r'[ぁ-ゔ]')
+RE_HIRAGANA = re.compile(r'[ぁ-ゔ]')
 def yomi_normalize(s):
     """ かな読みの正規化を行う """
     s = ''.join([i for i in list(s) if re.match(r"^(L|N)", unicodedata.category(i)[0])])
-    s = re_hiragana.sub(lambda x: chr(ord(x.group(0)) + ord('ァ') - ord('ぁ')), s)
+    s = RE_HIRAGANA.sub(lambda x: chr(ord(x.group(0)) + ord('ァ') - ord('ぁ')), s)
     s = re.sub(r'ー', r'', s)
     s = re.sub(r'ヰ', r'イ', s)
     s = re.sub(r'ヱ', r'エ', s)

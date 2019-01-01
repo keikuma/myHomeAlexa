@@ -23,6 +23,181 @@ parser.add_argument("-p", "--pickle", help="output for SimString pickled databas
 parser.add_argument("--debug", help="for debug", action='count')
 args = parser.parse_args()
 
+
+def create_model():
+    model = {
+        'languageModel':{
+            'invocationName': args.skill,
+            'intents':[
+                {
+                    "name": "AMAZON.CancelIntent",
+                    "slots": [],
+                    "samples": []
+                },
+                {
+                    "name": "AMAZON.HelpIntent",
+                    "slots": [],
+                    "samples": []
+                },
+                {
+                    "name": "AMAZON.StopIntent",
+                    "slots": [],
+                    "samples": []
+                },
+                {
+                    "name": "AMAZON.PauseIntent",
+                    "slots": [],
+                    "samples": []
+                },
+                {
+                    "name": "AMAZON.ResumeIntent",
+                    "slots": [],
+                    "samples": []
+                },
+                {
+                    "name": "PlayMusicIntent",
+                    "slots": [
+                        {
+                            "name": "Artist",
+                            "type": "ArtistList"
+                        },
+                        {
+                            "name": "Album",
+                            "type": "AlbumList"
+                        },
+                        {
+                            "name": "Title",
+                            "type": "TitleList"
+                        }
+                    ],
+                    "samples": [
+                        MY_NAME + "で {Artist} の曲をかけて",
+                        MY_NAME + "で {Artist} の曲を再生して",
+                        MY_NAME + "で {Artist} の楽曲をかけて",
+                        MY_NAME + "で {Artist} の楽曲を再生して",
+                        MY_NAME + "で {Album} をかけて",
+                        MY_NAME + "で {Album} を再生して",
+                        MY_NAME + "で {Artist} のアルバム {Album} をかけて",
+                        MY_NAME + "で {Artist} のアルバム {Album} を再生して",
+                        MY_NAME + "で {Artist} のアルバム {Album} をシャッフル再生して",
+                        MY_NAME + "で {Title} をかけて",
+                        MY_NAME + "で {Title} を再生して",
+                        MY_NAME + "で {Artist} の {Title} をかけて",
+                        MY_NAME + "で {Artist} の {Title} を再生して",
+                        "{Artist} の曲をかけて",
+                        "{Artist} の曲を再生して",
+                        "{Artist} の楽曲をかけて",
+                        "{Artist} の楽曲を再生して",
+                        "{Album} をかけて",
+                        "{Album} を再生して",
+                        "{Artist} のアルバム {Album} をかけて",
+                        "{Artist} のアルバム {Album} を再生して",
+                        "{Artist} のアルバム {Album} をシャッフル再生して",
+                        "{Title} をかけて",
+                        "{Title} を再生して",
+                        "{Artist} の {Title} をかけて",
+                        "{Artist} の {Title} を再生して",
+                    ]
+                },
+                {
+                    "name": "QueryTitleIntent",
+                    "samples": [
+                        MY_NAME + "の曲名を教えて",
+                        MY_NAME + "のタイトルを教えて",
+                        MY_NAME + "の曲名を",
+                        MY_NAME + "のタイトルを",
+                        "曲名を教えて",
+                        "タイトルを教えて",
+                        "曲名を",
+                        "タイトルを",
+                    ]
+                }
+            ],
+            "types": [
+                {
+                    "name": "ArtistList",
+                    "values": [{'id': k, **v} for k, v in artistid.items()]
+                },
+                {
+                    "name": "AlbumList",
+                    "values": [{'id': k, **v} for k, v in albumid.items()]
+                },
+                {
+                    "name": "TitleList",
+                    "values": [{'id': k, **v} for k, v in titleid.items()]
+                }
+            ]
+        },
+        "dialog": {
+            "intents": [
+                {
+                    "name": "PlayMusicIntent",
+                    "confirmationRequired": False,
+                    "prompts": {},
+                    "slots": [
+                        {
+                            "name": "Artist",
+                            "type": "ArtistList",
+                            "confirmationRequired": False,
+                            "elicitationRequired": False,
+                            "prompts": {
+                                "elicitation": "Elicit.Intent-PlayMusic.IntentSlot-Artist"
+                            }
+                        },
+                        {
+                            "name": "Album",
+                            "type": "AlbumList",
+                            "confirmationRequired": False,
+                            "elicitationRequired": False,
+                            "prompts": {
+                                "elicitation": "Elicit.Intent-PlayMusic.IntentSlot-Album"
+                            }
+                        },
+                        {
+                            "name": "Title",
+                            "type": "TitleList",
+                            "confirmationRequired": False,
+                            "elicitationRequired": False,
+                            "prompts": {
+                                "elicitation": "Elicit.Intent-PlayMusic.IntentSlot-Title"
+                            }
+                        }
+                    ]
+                }
+            ]
+        },
+        "prompts": [
+            {
+                "id": "Elicit.Intent-PlayMusic.IntentSlot-Artist",
+                "variations": [
+                    {
+                        "type": "PlainText",
+                        "value": "誰の曲を再生しますか?"
+                    }
+                ]
+            },
+            {
+                "id": "Elicit.Intent-PlayMusic.IntentSlot-Album",
+                "variations": [
+                    {
+                        "type": "PlainText",
+                        "value": "どのアルバムを再生しますか?"
+                    }
+                ]
+            },
+            {
+                "id": "Elicit.Intent-PlayMusic.IntentSlot-Title",
+                "variations": [
+                    {
+                        "type": "PlainText",
+                        "value": "どの曲を再生しますか?"
+                    }
+                ]
+            }
+        ]
+    }
+    return model
+
 if (not args.input) or (not args.output) or (not args.skill):
     parser.print_help()
     exit(1)
@@ -102,153 +277,11 @@ for i, d, y in zip([artistid, albumid, titleid],
             i[item_id] = {'id': item_id, 'name': {'value': name}}
             if name != yomi:
                 if 'synonyms' in i[item_id]['name']:
-                    i[item_id]['name'].append(yomi)
+                    i[item_id]['name']['synonyms'].append(yomi)
                 else:
                     i[item_id]['name']['synonyms'] = [yomi]
 
-model = {
-    'languageModel':{
-        'invocationName': args.skill,
-        'intents':[
-            {
-                "name": "AMAZON.CancelIntent",
-                "slots": [],
-                "samples": []
-            },
-            {
-                "name": "AMAZON.HelpIntent",
-                "slots": [],
-                "samples": []
-            },
-            {
-                "name": "AMAZON.StopIntent",
-                "slots": [],
-                "samples": []
-            },
-            {
-                "name": "AMAZON.PauseIntent",
-                "slots": [],
-                "samples": []
-            },
-            {
-                "name": "AMAZON.ResumeIntent",
-                "slots": [],
-                "samples": []
-            },
-            {
-                "name": "PlayMusicIntent",
-                "slots": [
-                    {
-                        "name": "Artist",
-                        "type": "ArtistList"
-                    },
-                    {
-                        "name": "Album",
-                        "type": "AlbumList"
-                    },
-                    {
-                        "name": "Title",
-                        "type": "TitleList"
-                    }
-                ],
-                "samples": [
-                    MY_NAME + "で {Artist} の曲をかけて",
-                    MY_NAME + "で {Artist} の曲を再生して",
-                    MY_NAME + "で {Album} をかけて",
-                    MY_NAME + "で {Album} を再生して",
-                    MY_NAME + "で {Artist} のアルバム {Album} をかけて",
-                    MY_NAME + "で {Artist} のアルバム {Album} を再生して",
-                    MY_NAME + "で {Artist} のアルバム {Album} をシャッフル再生して",
-                    MY_NAME + "で {Title} をかけて",
-                    MY_NAME + "で {Title} を再生して",
-                    MY_NAME + "で {Artist} の {Title} をかけて",
-                    MY_NAME + "で {Artist} の {Title} を再生して",
-                ]
-            }
-        ],
-        "types": [
-            {
-                "name": "ArtistList",
-                "values": [{'id': k, **v} for k, v in artistid.items()]
-            },
-            {
-                "name": "AlbumList",
-                "values": [{'id': k, **v} for k, v in albumid.items()]
-            },
-            {
-                "name": "TitleList",
-                "values": [{'id': k, **v} for k, v in titleid.items()]
-            }
-        ]
-    },
-    "dialog": {
-        "intents": [
-            {
-                "name": "PlayMusicIntent",
-                "confirmationRequired": False,
-                "prompts": {},
-                "slots": [
-                    {
-                        "name": "Artist",
-                        "type": "ArtistList",
-                        "confirmationRequired": False,
-                        "elicitationRequired": False,
-                        "prompts": {
-                            "elicitation": "Elicit.Intent-PlayMusic.IntentSlot-Artist"
-                        }
-                    },
-                    {
-                        "name": "Album",
-                        "type": "AlbumList",
-                        "confirmationRequired": False,
-                        "elicitationRequired": False,
-                        "prompts": {
-                            "elicitation": "Elicit.Intent-PlayMusic.IntentSlot-Album"
-                        }
-                    },
-                    {
-                        "name": "Title",
-                        "type": "TitleList",
-                        "confirmationRequired": False,
-                        "elicitationRequired": False,
-                        "prompts": {
-                            "elicitation": "Elicit.Intent-PlayMusic.IntentSlot-Title"
-                        }
-                    }
-                ]
-            }
-        ]
-    },
-    "prompts": [
-        {
-            "id": "Elicit.Intent-PlayMusic.IntentSlot-Artist",
-            "variations": [
-                {
-                    "type": "PlainText",
-                    "value": "誰の曲を再生しますか?"
-                }
-            ]
-        },
-        {
-            "id": "Elicit.Intent-PlayMusic.IntentSlot-Album",
-            "variations": [
-                {
-                    "type": "PlainText",
-                    "value": "どのアルバムを再生しますか?"
-                }
-            ]
-        },
-        {
-            "id": "Elicit.Intent-PlayMusic.IntentSlot-Title",
-            "variations": [
-                {
-                    "type": "PlainText",
-                    "value": "どの曲を再生しますか?"
-                }
-            ]
-        }
-    ]
-}
+model = create_model()
 
 with open(args.output, 'wt', encoding='utf-8', newline='\n') as f:
     if args.debug:

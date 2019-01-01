@@ -7,6 +7,7 @@ verify_ssl = true
 boto3 = "*"
 awscli = "*"
 pylint = "*"
+python-lambda-local = "*"
 
 [packages]
 ask-sdk = "*"

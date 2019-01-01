@@ -5,6 +5,20 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "name": "Python: Current File (lambda tester)",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceRoot}/lambda/py/tester.py",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceRoot}",
+            "env": {},
+            "envFile": "${workspaceRoot}/.env",
+            "args": [
+                "-e",
+                "testevent/PlayMusic_artsit_with_id.json"
+            ]
+        },
+        {
             "name": "Python: Current File (Integrated Terminal)",
             "type": "python",
             "request": "launch",
@@ -13,12 +27,6 @@
             "cwd": "${workspaceRoot}",
             "env": {},
             "envFile": "${workspaceRoot}/.env",
-            "args": [
-                "-i", "musicdb/list.json",
-                "-o", "models/ja-JP.json",
-                "-s", "おうちサーバー",
-                "-d", "lambda/py/data/database.json"
-            ]
         },
         {
             "name": "Python: Attach",
