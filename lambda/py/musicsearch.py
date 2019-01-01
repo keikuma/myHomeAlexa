@@ -27,20 +27,27 @@ class MusicSearch:
                       artist_name=None, album_name=None, title_name=None):
         """ 楽曲選択を行う """
 
+        LOGGER.debug("get_play_list: artist_id=%s", artist_id)
+        LOGGER.debug("get_play_list: album_id=%s", album_id)
+        LOGGER.debug("get_play_list: title_id=%s", title_id)
+        LOGGER.debug("get_play_list: artist_name=%s", artist_name)
+        LOGGER.debug("get_play_list: album_name=%s", album_name)
+        LOGGER.debug("get_play_list: title_name=%s", title_name)
+
         # artist, title 指定を最優先
         if artist_name and title_name:
             title_id = self.music_db.get_title_by_name(title_name, 1, artist_name=artist_name)
             if title_id:
                 title = self.music_db.get_title_by_id(title_id)
                 LOGGER.debug('get_play_list: (artist_name and title_name) %s', title_id)
-                return {'type': 'title', 'title': title, 'reliability': 10}
+                return {'type': 'title', 'title': title, 'list': [title_id], 'reliability': 10}
 
         # IDが来て、マッチすれば信頼性Max
         if title_id:
             title = self.music_db.get_title_by_id(title_id)
             if title:
                 LOGGER.debug('get_play_list: (title_id) %s', title_id)
-                return {'type': 'title', 'title': title, 'reliability': 5}
+                return {'type': 'title', 'title': title, 'list': [title_id], 'reliability': 5}
         elif album_id:
             album = self.music_db.get_album_by_id(album_id)
             if album:
@@ -62,7 +69,7 @@ class MusicSearch:
             if title_id:
                 LOGGER.debug('get_play_list: (title_name) %s->%s', title_name, title_id)
                 title = self.music_db.get_title_by_id(title_id)
-                return {'type': 'title', 'title': title, 'reliability': 4}
+                return {'type': 'title', 'title': title, 'list': [title_id], 'reliability': 4}
         elif album_name:
             album_id = self.music_db.get_album_by_name(album_name, 1)
             if album_id:
@@ -80,25 +87,26 @@ class MusicSearch:
                 random.shuffle(title_list)
                 return {'type': 'artist', 'artist': artist, 'list': title_list, 'reliability': 4}
 
-        # IDでヒットしたけれど、スロットが違う
-        for i, item_id in enumerate([artist_id, album_id, title_id]):
-            for j, item_type in enumerate(['artist', 'album', 'title']):
-                if item_id and i != j:
-                    item = self.music_db.get_item_by_id(item_type, item_id)
-                    if item:
-                        LOGGER.debug('get_play_list: (slot no match %s_id) %s', item_type, item_id)
-                        return {'type': item_type, item_type: item, 'reliability': 3}
+# ToDO: listの生成
+        # # IDでヒットしたけれど、スロットが違う
+        # for i, item_id in enumerate([artist_id, album_id, title_id]):
+        #     for j, item_type in enumerate(['artist', 'album', 'title']):
+        #         if item_id and i != j:
+        #             item = self.music_db.get_item_by_id(item_type, item_id)
+        #             if item:
+        #                 LOGGER.debug('get_play_list: (slot no match %s_id) %s', item_type, item_id)
+        #                 return {'type': item_type, item_type: item, 'reliability': 3}
 
-        # スロット関係なく部分一致
-        for i, name in enumerate([artist_name, album_name, title_name]):
-            if name:
-                for j, item_type in enumerate(['artist', 'album', 'title']):
-                    item_id = self.music_db.get_entry_by_name(item_type, name)
-                    if item_id:
-                        LOGGER.debug('get_play_list: (slot no match %s_name) %s', item_type, item_id)
-                        item = self.music_db.get_item_by_id(item_type, item_id)
-                        return {'type': item_type, item_type: item,
-                                'reliability': 2 if i == j else 1}
+        # # スロット関係なく部分一致
+        # for i, name in enumerate([artist_name, album_name, title_name]):
+        #     if name:
+        #         for j, item_type in enumerate(['artist', 'album', 'title']):
+        #             item_id = self.music_db.get_entry_by_name(item_type, name)
+        #             if item_id:
+        #                 LOGGER.debug('get_play_list: (slot no match %s_name) %s', item_type, item_id)
+        #                 item = self.music_db.get_item_by_id(item_type, item_id)
+        #                 return {'type': item_type, item_type: item,
+        #                         'reliability': 2 if i == j else 1}
         # 何も見つけられなかった
         LOGGER.debug('get_play_list: (no match)')
         return None

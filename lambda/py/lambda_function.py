@@ -58,8 +58,8 @@ sb = StandardSkillBuilder(table_name="alexa-music-play")
 
 def get_value_and_id(slots, attr_name):
     """ スロットから、valueとid を取り出す """
+    # TODO: 複数の値を返して、妥当な組み合わせを探す
     slot = slots.get(attr_name, None)
-    value = slot.value
     resolution_id = None
     if slot.resolutions and slot.resolutions.resolutions_per_authority:
         for resolution in slot.resolutions.resolutions_per_authority:
@@ -68,11 +68,11 @@ def get_value_and_id(slots, attr_name):
                     if value.value.id:
                         resolution_id = value.value.id
                         break
-    return value, resolution_id
+    return slot.value, resolution_id
 
 def build_ssml_from_item_name(item_name):
     """ 英語っぽいところをlangタグで囲む """
-    ssml = re.sub(r"([0-9A-Za-z][0-9A-Za-z\s.\-'!\?]*)", r'<lang xml:"en-US">\1</lang>', item_name)
+    ssml = re.sub(r"([0-9A-Za-z][0-9A-Za-z\s.\-'!\?]*)", r'<lang xml:lang="en-US">\1</lang>', item_name)
     return ssml
 
 
@@ -110,7 +110,7 @@ class PlayMusicHandler(AbstractRequestHandler):
 
         play_list = MUSICSEARCH.get_play_list(artist_id=artist_id, album_id=album_id, title_id=title_id,
                                               artist_name=artist_name, album_name=album_name, title_name=title_name)
-        #LOGGER.debug("play_list: %s", str(play_list))
+        LOGGER.debug("play_list: %s", str(play_list))
         response_builder = handler_input.response_builder
         persistent_attributes = handler_input.attributes_manager.persistent_attributes
         if not play_list:
@@ -155,7 +155,7 @@ class PlayMusicHandler(AbstractRequestHandler):
             else:
                 speech = 'アルバム {} は見つかりませんでした。'.format(build_ssml_from_item_name(play_list['album']['name']['value']))
                 response_builder.speak(speech)
-        elif play_list['type'] == 'item':
+        elif play_list['type'] == 'title':
             if play_list['list']:
                 play_queue = {
                     'queue': play_list['list'],
