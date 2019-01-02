@@ -8,7 +8,9 @@
 import boto3
 import os
 import re
+import sys
 import logging
+import itertools
 import json
 from urllib.parse import urljoin
 
@@ -58,17 +60,26 @@ sb = StandardSkillBuilder(table_name="alexa-music-play")
 
 def get_value_and_id(slots, attr_name):
     """ スロットから、valueとid を取り出す """
-    # TODO: 複数の値を返して、妥当な組み合わせを探す
+    values = []
     slot = slots.get(attr_name, None)
-    resolution_id = None
-    if slot.resolutions and slot.resolutions.resolutions_per_authority:
+    slot_value = None
+    if slot and slot.resolutions and slot.resolutions.resolutions_per_authority:
+        slot_value = slot.value
         for resolution in slot.resolutions.resolutions_per_authority:
             if resolution.status.code == StatusCode.ER_SUCCESS_MATCH:
                 for value in resolution.values:
+                    v = {}
                     if value.value.id:
-                        resolution_id = value.value.id
-                        break
-    return slot.value, resolution_id
+                        v['id'] = value.value.id
+                    if value.value.name:
+                        v['name'] = value.value.name
+                        if v['name'] == slot_value:
+                            slot_value = None
+                    if v:
+                        values.append(v)
+    if slot_value:
+        values.append({'name': slot_value})
+    return values
 
 def build_ssml_from_item_name(item_name):
     """ 英語っぽいところをlangタグで囲む """
@@ -102,92 +113,82 @@ class PlayMusicHandler(AbstractRequestHandler):
         #LOGGER.debug("request_attributes: %s", str(handler_input.attributes_manager.request_attributes))
         #LOGGER.debug("session_attributes: %s", str(handler_input.attributes_manager.session_attributes))
 
-        # slotの値を取り出す
-        slots = handler_input.request_envelope.request.intent.slots
-        artist_name, artist_id = get_value_and_id(slots, 'Artist')
-        album_name, album_id = get_value_and_id(slots, 'Album')
-        title_name, title_id = get_value_and_id(slots, 'Title')
-
-        play_list = MUSICSEARCH.get_play_list(artist_id=artist_id, album_id=album_id, title_id=title_id,
-                                              artist_name=artist_name, album_name=album_name, title_name=title_name)
-        LOGGER.debug("play_list: %s", str(play_list))
         response_builder = handler_input.response_builder
-        persistent_attributes = handler_input.attributes_manager.persistent_attributes
-        if not play_list:
-            speech = 'ごめんなさい。わかりません。'
-            response_builder.speak(speech)
-        elif play_list['type'] == 'artist':
-            if play_list['list']:
-                speech = '{} の楽曲をシャッフル再生します。'.format(build_ssml_from_item_name(play_list['artist']['name']['value']))
+
+        try:
+            # slotの値を取り出す
+            slots = handler_input.request_envelope.request.intent.slots
+            slots_artist = get_value_and_id(slots, 'Artist')
+            slots_album = get_value_and_id(slots, 'Album')
+            slots_title = get_value_and_id(slots, 'Title')
+
+            # 最優秀候補を選ぶ
+            play_list = None
+            max_reliability = -1
+            for slots in [slots_artist, slots_album, slots_title]:
+                if len(slots) == 0:
+                    slots.append({'id': None, 'name': None})
+            for slot_artist, slot_album, slot_title in itertools.product(slots_artist, slots_album, slots_title):
+                candidate = MUSICSEARCH.get_play_list(artist_id=slot_artist.get('id', None), artist_name=slot_artist.get('name', None),
+                                                    album_id=slot_album.get('id', None), album_name=slot_album.get('name', None),
+                                                    title_id=slot_title.get('id', None), title_name=slot_title.get('name', None))
+                if candidate and candidate['reliability'] > max_reliability:
+                    play_list = candidate
+                    max_reliability = candidate['reliability']
+                    if max_reliability == 10:
+                        break
+
+            LOGGER.debug("play_list: %s", str(play_list))
+            persistent_attributes = handler_input.attributes_manager.persistent_attributes
+            if not play_list:
+                speech = 'ごめんなさい。わかりません。'
                 response_builder.speak(speech)
-                # list: 再生リスト
-                # index: 現在再生中のリスト中のインデックス
-                # type: 再生しているコンテンツのタイプ (artist, album, title)
-                # can_shuffle: シャッフル可能かどうか
-                # is_shffled: リストがシャッフルされているかどうか
-                # 197はマジックナンバー。適当でキリの良い数。
-                play_queue = {
-                    'queue': play_list['list'][:197],
-                    'index': 0,
-                    'type': 'artist',
-                    'can_shuffle': False,
-                    'is_shffled': True,
-                    'state': 'PLAY_REQUEST',
-                    'playback_failure_count': 0
-                }
             else:
-                speech = '{} の楽曲は見つかりませんでした。'
-                response_builder.speak(speech)
-        elif play_list['type'] == 'album':
-            if play_list['list']:
-                speech = 'アルバム {} を再生します。'.format(build_ssml_from_item_name(play_list['album']['name']['value']))
-                response_builder.speak(speech)
-                play_queue = {
-                    'queue': play_list['list'],
-                    'index': 0,
-                    'type': 'album',
-                    'can_shuffle': True,
-                    'is_shffled': False,
-                    'state': 'PLAY_REQUEST',
-                    'list': play_list['list'],
-                    'playback_failure_count': 0
-                }
-            else:
-                speech = 'アルバム {} は見つかりませんでした。'.format(build_ssml_from_item_name(play_list['album']['name']['value']))
-                response_builder.speak(speech)
-        elif play_list['type'] == 'title':
-            if play_list['list']:
-                play_queue = {
-                    'queue': play_list['list'],
-                    'index': 0,
-                    'type': 'album',
-                    'can_shuffle': False,
-                    'is_shffled': False,
-                    'state': 'PLAY_REQUEST',
-                    'playback_failure_count': 0
-                }
-        else:
-            speech = 'ごめんなさい。わかりません。'
-            response_builder.speak(speech)
-        if 'play_queue' in locals():
-            LOGGER.debug("play_queue: {}".format(str(play_queue)))
-            title_id = play_queue['queue'][play_queue['index']]
-            title_info = MUSIC_DB.get_title_by_id(title_id)
-            meta_data = AudioItemMetadata(title=title_info['title'], subtitle=title_info['artist'])
-            response_builder.add_directive(
-                PlayDirective(
-                    play_behavior=PlayBehavior.REPLACE_ALL,
-                    audio_item=AudioItem(
-                        Stream(
-                            token=title_id,
-                            url=urljoin(MUSIC_URL_BASE, title_info['path'])
-                        ),
-                        metadata=meta_data
+                MUSICSEARCH.expansion_list(play_list)
+                if play_list['list']:
+                    play_queue = {'info': play_list, 'list': play_list['list'], 'index': 0, 'state': 'PLAY_REQUEST', 'playback_failure_count': 0}
+                if play_list['type'] == 'artist':
+                    if play_list['list']:
+                        speech = '{} の楽曲をシャッフル再生します。'.format(build_ssml_from_item_name(play_list['artist']['name']['value']))
+                        response_builder.speak(speech)
+                    else:
+                        speech = '{} の楽曲は見つかりませんでした。'
+                        play_queue = None
+                        response_builder.speak(speech)
+                elif play_list['type'] == 'album':
+                    if play_list['list']:
+                        speech = 'アルバム {} を再生します。'.format(build_ssml_from_item_name(play_list['album']['name']['value']))
+                        response_builder.speak(speech)
+                    else:
+                        speech = 'アルバム {} は見つかりませんでした。'.format(build_ssml_from_item_name(play_list['album']['name']['value']))
+                        response_builder.speak(speech)
+                elif play_list['type'] == 'title':
+                    if play_list['list']:
+                        "do nothing."
+                else:
+                    speech = 'ごめんなさい。わかりません。'
+                    response_builder.speak(speech)
+            if 'play_queue' in locals() and play_queue:
+                LOGGER.debug("play_queue: {}".format(str(play_queue)))
+                title_id = play_queue['list'][play_queue['index']]
+                title_info = MUSIC_DB.get_title_by_id(title_id)
+                meta_data = AudioItemMetadata(title=title_info['title'], subtitle=title_info['artist'])
+                response_builder.add_directive(
+                    PlayDirective(
+                        play_behavior=PlayBehavior.REPLACE_ALL,
+                        audio_item=AudioItem(
+                            Stream(
+                                token=title_id,
+                                url=urljoin(MUSIC_URL_BASE, title_info['path'])
+                            ),
+                            metadata=meta_data
+                        )
                     )
                 )
-            )
-            persistent_attributes['play_queue'] = play_queue
-            handler_input.attributes_manager.save_persistent_attributes()
+                persistent_attributes['play_queue'] = play_queue
+                handler_input.attributes_manager.save_persistent_attributes()
+        except:
+            LOGGER.error("Unexpected error: {}".format(sys.exc_info()[0]))
         return handler_input.response_builder.response
 
 class QueryTitleIntentHandler(AbstractRequestHandler):
@@ -198,22 +199,27 @@ class QueryTitleIntentHandler(AbstractRequestHandler):
 
     def handle(self, handler_input):
         # type: (HandlerInput) -> Response
+        LOGGER.debug("In QueryTitleIntentHandler")
         response_builder = handler_input.response_builder
-        persistent_attributes = handler_input.attributes_manager.persistent_attributes
-        play_queue = persistent_attributes.get('play_queue', {})
-        title_id = play_queue.get('list', {}).get(play_queue['index'], None)
-        if title_id:
-            title_info = MUSIC_DB.get_title_by_id(title_id)
-            album_info = MUSIC_DB.get_album_by_id(title_info['album_id'])
-            artist_info = MUSIC_DB.get_artist_by_id(title_info['artist_id'])
-            speech = ""
-            if artist_info:
-                speech += build_ssml_from_item_name(artist_info['name']['value']) + " で、"
-            if album_info:
-                speech += build_ssml_from_item_name(album_info['name']['value']) + " に収録の、"
-            if title_info:
-                speech += build_ssml_from_item_name(title_info['title']) + " です。"
-            response_builder.speak(speech)
+        try:
+            persistent_attributes = handler_input.attributes_manager.persistent_attributes
+            play_queue = persistent_attributes['play_queue']
+            title_id = play_queue['list'][play_queue['index']]
+            if title_id:
+                title_info = MUSIC_DB.get_title_by_id(title_id)
+                album_info = MUSIC_DB.get_album_by_id(title_info['album_id'])
+                artist_info = MUSIC_DB.get_artist_by_id(title_info['artist_id'])
+                speech = ""
+                if artist_info:
+                    speech += build_ssml_from_item_name(artist_info['name']['value']) + " で、"
+                if album_info:
+                    speech += build_ssml_from_item_name(album_info['name']['value']) + " に収録の、"
+                if title_info:
+                    speech += build_ssml_from_item_name(title_info['title']) + " です。"
+                response_builder.speak(speech)
+        except:
+            LOGGER.error("Unexpected error: {}".format(sys.exc_info()[0]))
+
         return handler_input.response_builder.response
 
 class HelpIntentHandler(AbstractRequestHandler):
@@ -246,6 +252,12 @@ class CancelOrStopIntentHandler(AbstractRequestHandler):
         handler_input.response_builder.add_directive(ClearQueueDirective())
         handler_input.response_builder.add_directive(StopDirective())
         handler_input.response_builder.speak(STOP_MESSAGE)
+        try:
+            persistent_attributes = handler_input.attributes_manager.persistent_attributes
+            persistent_attributes['play_queue'] = {}
+            handler_input.attributes_manager.save_persistent_attributes()
+        except:
+            LOGGER.error("Unexpected error: {}".format(sys.exc_info()[0]))
         return handler_input.response_builder.response
 
 
@@ -284,6 +296,24 @@ class SessionEndedRequestHandler(AbstractRequestHandler):
 
 
 # AudioPlayer Handler
+class PlaybackStartedHandler(AbstractRequestHandler):
+    """ AudioPlayer PlaybackStartedHandler """
+    def can_handle(self, handler_input):
+        return is_request_type("AudioPlayer.PlaybackStarted")
+
+    def handle(self, handler_input):
+        LOGGER.debug("In PlaybackStartedHandler")
+        response_builder = handler_input.response_builder
+        try:
+            persistent_attributes = handler_input.attributes_manager.persistent_attributes
+            audio_player_state = handler_input.request_envelope.context.audio_player
+            play_queue = persistent_attributes['play_queue']
+            play_queue['state'] = 'PLAYING'
+            handler_input.attributes_manager.save_persistent_attributes()
+        except:
+            LOGGER.error("Unexpected error: {}".format(sys.exc_info()[0]))
+        return handler_input.response_builder.response
+
 class PauseIntentHandler(AbstractRequestHandler):
     """ AudioPlayer PauseIntentHandler """
     def can_handle(self, handler_input):
@@ -291,17 +321,20 @@ class PauseIntentHandler(AbstractRequestHandler):
 
     def handle(self, handler_input):
         """ 一時停止を実装 """
+        LOGGER.debug("In PauseIntentHandler")
         response_builder = handler_input.response_builder
-        persistent_attributes = handler_input.attributes_manager.persistent_attributes
-        audio_player_state = handler_input.request_envelope.context.audio_player
-        if audio_player_state.player_activity != PlayerActivity.PLAYING:
-            return handler_input.response_builder.response
-        play_queue = persistent_attributes.get('play_queue', None)
-        if play_queue:
-            play_queue['offset_in_milliseconds'] = audio_player_state['offset_in_milliseconds']
+        try:
+            persistent_attributes = handler_input.attributes_manager.persistent_attributes
+            audio_player_state = handler_input.request_envelope.context.audio_player
+            if audio_player_state.player_activity != PlayerActivity.PLAYING:
+                return handler_input.response_builder.response
+            play_queue = persistent_attributes['play_queue']
+            play_queue['offset_in_milliseconds'] = audio_player_state.offset_in_milliseconds
             play_queue['state'] = 'PAUSED'
-            response_builder.add_directive(StopDirective())
             handler_input.attributes_manager.save_persistent_attributes()
+        except:
+            LOGGER.error("Unexpected error: {}".format(sys.exc_info()[0]))
+        response_builder.add_directive(StopDirective())
         return handler_input.response_builder.response
 
 class ResumeIntentHandler(AbstractRequestHandler):
@@ -311,15 +344,16 @@ class ResumeIntentHandler(AbstractRequestHandler):
 
     def handle(self, handler_input):
         """ 再開を実装 """
+        LOGGER.debug("In ResumeIntentHandler")
         response_builder = handler_input.response_builder
-        persistent_attributes = handler_input.attributes_manager.persistent_attributes
-        audio_player_state = handler_input.request_envelope.context.audio_player
-        if audio_player_state.player_activity != PlayerActivity.PAUSED:
-            return handler_input.response_builder.response
-        play_queue = persistent_attributes.get('play_queue', None)
-        if play_queue:
+        try:
+            persistent_attributes = handler_input.attributes_manager.persistent_attributes
+            audio_player_state = handler_input.request_envelope.context.audio_player
+            if audio_player_state.player_activity != PlayerActivity.PAUSED:
+                return handler_input.response_builder.response
+            play_queue = persistent_attributes['play_queue']
             if play_queue['state'] and play_queue['state'] == 'PAUSED':
-                title_id = play_queue['queue'][play_queue['index']]
+                title_id = play_queue['list'][play_queue['index']]
                 title_info = MUSIC_DB.get_title_by_id(title_id)
                 meta_data = AudioItemMetadata(title=title_info['title'], subtitle=title_info['artist'])
                 response_builder.add_directive(
@@ -337,6 +371,8 @@ class ResumeIntentHandler(AbstractRequestHandler):
                 )
                 play_queue['state'] = 'PLAY_REQUEST'
                 handler_input.attributes_manager.save_persistent_attributes()
+        except:
+            LOGGER.error("Unexpected error: {}".format(sys.exc_info()[0]))
         return handler_input.response_builder.response
 
 class LoopOffIntentIntentHandler(AbstractRequestHandler):
@@ -345,6 +381,7 @@ class LoopOffIntentIntentHandler(AbstractRequestHandler):
         return is_request_type("AMAZON.LoopOffIntent")
 
     def handle(self, handler_input):
+        LOGGER.debug("In LoopOffIntentlIntentHandler")
         return handler_input.response_builder.response
 
 class LoopOnIntentIntentHandler(AbstractRequestHandler):
@@ -353,6 +390,7 @@ class LoopOnIntentIntentHandler(AbstractRequestHandler):
         return is_request_type("AMAZON.LoopOnIntent")
 
     def handle(self, handler_input):
+        LOGGER.debug("In LoopOnIntentlIntentHandler")
         return handler_input.response_builder.response
 
 class NextIntentHandler(AbstractRequestHandler):
@@ -362,16 +400,17 @@ class NextIntentHandler(AbstractRequestHandler):
 
     def handle(self, handler_input):
         """ 次の曲へ """
+        LOGGER.debug("In NextIntentHandler")
         response_builder = handler_input.response_builder
-        persistent_attributes = handler_input.attributes_manager.persistent_attributes
-        audio_player_state = handler_input.request_envelope.context.audio_player
-        if audio_player_state.player_activity != PlayerActivity.PLAYING:
-            return handler_input.response_builder.response
-        play_queue = persistent_attributes.get('play_queue', None)
-        if play_queue:
+        try:
+            persistent_attributes = handler_input.attributes_manager.persistent_attributes
+            audio_player_state = handler_input.request_envelope.context.audio_player
+            if audio_player_state.player_activity != PlayerActivity.PLAYING:
+                return handler_input.response_builder.response
+            play_queue = persistent_attributes['play_queue']
             play_queue['index'] += 1
             play_queue['index'] %= play_queue['list'].len()
-            title_id = play_queue['queue'][play_queue['index']]
+            title_id = play_queue['list'][play_queue['index']]
             title_info = MUSIC_DB.get_title_by_id(title_id)
             meta_data = AudioItemMetadata(title=title_info['title'], subtitle=title_info['artist'])
             response_builder.add_directive(
@@ -388,6 +427,8 @@ class NextIntentHandler(AbstractRequestHandler):
             )
             play_queue['state'] = 'PLAY_REQUEST'
             handler_input.attributes_manager.save_persistent_attributes()
+        except:
+            LOGGER.error("Unexpected error: {}".format(sys.exc_info()[0]))
         return handler_input.response_builder.response
 
 class PreviousIntentHandler(AbstractRequestHandler):
@@ -397,16 +438,17 @@ class PreviousIntentHandler(AbstractRequestHandler):
 
     def handle(self, handler_input):
         """ 前の曲へ """
+        LOGGER.debug("In PreviousIntentHandler")
         response_builder = handler_input.response_builder
-        persistent_attributes = handler_input.attributes_manager.persistent_attributes
-        audio_player_state = handler_input.request_envelope.context.audio_player
-        if audio_player_state.player_activity != PlayerActivity.PLAYING:
-            return handler_input.response_builder.response
-        play_queue = persistent_attributes.get('play_queue', None)
-        if play_queue:
+        try:
+            persistent_attributes = handler_input.attributes_manager.persistent_attributes
+            audio_player_state = handler_input.request_envelope.context.audio_player
+            if audio_player_state.player_activity != PlayerActivity.PLAYING:
+                return handler_input.response_builder.response
+            play_queue = persistent_attributes['play_queue']
             play_queue['index'] = play_queue['index'] + play_queue['list'].len() - 1
             play_queue['index'] %= play_queue['list'].len()
-            title_id = play_queue['queue'][play_queue['index']]
+            title_id = play_queue['list'][play_queue['index']]
             title_info = MUSIC_DB.get_title_by_id(title_id)
             meta_data = AudioItemMetadata(title=title_info['title'], subtitle=title_info['artist'])
             response_builder.add_directive(
@@ -423,6 +465,8 @@ class PreviousIntentHandler(AbstractRequestHandler):
             )
             play_queue['state'] = 'PLAY_REQUEST'
             handler_input.attributes_manager.save_persistent_attributes()
+        except:
+            LOGGER.error("Unexpected error: {}".format(sys.exc_info()[0]))
         return handler_input.response_builder.response
 
 class RepeatIntentHandler(AbstractRequestHandler):
@@ -431,6 +475,7 @@ class RepeatIntentHandler(AbstractRequestHandler):
         return is_request_type("AMAZON.RepeatIntent")
 
     def handle(self, handler_input):
+        LOGGER.debug("In RepeatIntentHandler")
         return handler_input.response_builder.response
 
 class ShuffleOffIntentHandler(AbstractRequestHandler):
@@ -439,6 +484,7 @@ class ShuffleOffIntentHandler(AbstractRequestHandler):
         return is_request_type("AMAZON.ShuffleOffIntent")
 
     def handle(self, handler_input):
+        LOGGER.debug("In ShuffleOffIntentHandler")
         return handler_input.response_builder.response
 
 class ShuffleOnIntentHandler(AbstractRequestHandler):
@@ -447,6 +493,7 @@ class ShuffleOnIntentHandler(AbstractRequestHandler):
         return is_request_type("AMAZON.ShuffleOnIntent")
 
     def handle(self, handler_input):
+        LOGGER.debug("In ShuffleOnIntent")
         return handler_input.response_builder.response
 
 class StartOverIntentHandler(AbstractRequestHandler):
@@ -456,11 +503,13 @@ class StartOverIntentHandler(AbstractRequestHandler):
 
     def handle(self, handler_input):
         """ 再生を停止する """
+        LOGGER.debug("In StartOverIntentHandler")
         handler_input.response_builder.add_directive(ClearQueueDirective())
         handler_input.response_builder.add_directive(StopDirective())
         handler_input.response_builder.speak(STOP_MESSAGE)
         persistent_attributes = handler_input.attributes_manager.persistent_attributes
-        persistent_attributes = {}
+        persistent_attributes['play_queue'] = {}
+        handler_input.attributes_manager.save_persistent_attributes()
         return handler_input.response_builder.response
 
 class PlaybackFailedHandler(AbstractRequestHandler):
@@ -470,35 +519,39 @@ class PlaybackFailedHandler(AbstractRequestHandler):
 
     def handle(self, handler_input):
         """ 再生失敗 """
+        LOGGER.debug("In PlaybackFailedHandler")
         response_builder = handler_input.response_builder
-        persistent_attributes = handler_input.attributes_manager.persistent_attributes
-        play_queue = persistent_attributes.get('play_queue', None)
-        if play_queue and play_queue['playback_failure_count']:
-            play_queue['playback_failure_count'] += 1
-        if play_queue['playback_failure_count'] > 5:
-            handler_input.response_builder.add_directive(ClearQueueDirective())
-            handler_input.response_builder.add_directive(StopDirective())
-            handler_input.response_builder.speak('再生できませんでした')
-        elif play_queue:
-            play_queue['index'] += 1
-            play_queue['index'] %= play_queue['list'].len()
-            title_id = play_queue['queue'][play_queue['index']]
-            title_info = MUSIC_DB.get_title_by_id(title_id)
-            meta_data = AudioItemMetadata(title=title_info['title'], subtitle=title_info['artist'])
-            response_builder.add_directive(
-                PlayDirective(
-                    play_behavior=PlayBehavior.REPLACE_ALL,
-                    audio_item=AudioItem(
-                        Stream(
-                            token=title_id,
-                            url=urljoin(MUSIC_URL_BASE, title_info['path'])
-                        ),
-                        metadata=meta_data
+        try:
+            persistent_attributes = handler_input.attributes_manager.persistent_attributes
+            play_queue = persistent_attributes['play_queue']
+            if play_queue and play_queue['playback_failure_count']:
+                play_queue['playback_failure_count'] += 1
+            if play_queue['playback_failure_count'] > 5:
+                handler_input.response_builder.add_directive(ClearQueueDirective())
+                handler_input.response_builder.add_directive(StopDirective())
+                handler_input.response_builder.speak('再生できませんでした')
+            elif play_queue:
+                play_queue['index'] += 1
+                play_queue['index'] %= play_queue['list'].len()
+                title_id = play_queue['list'][play_queue['index']]
+                title_info = MUSIC_DB.get_title_by_id(title_id)
+                meta_data = AudioItemMetadata(title=title_info['title'], subtitle=title_info['artist'])
+                response_builder.add_directive(
+                    PlayDirective(
+                        play_behavior=PlayBehavior.REPLACE_ALL,
+                        audio_item=AudioItem(
+                            Stream(
+                                token=title_id,
+                                url=urljoin(MUSIC_URL_BASE, title_info['path'])
+                            ),
+                            metadata=meta_data
+                        )
                     )
                 )
-            )
-            play_queue['state'] = 'PLAY_REQUEST'
-        handler_input.attributes_manager.save_persistent_attributes()
+                play_queue['state'] = 'PLAY_REQUEST'
+            handler_input.attributes_manager.save_persistent_attributes()
+        except:
+            LOGGER.error("Unexpected error: {}".format(sys.exc_info()[0]))
         return handler_input.response_builder.response
 
 class PlaybackNearlyFinishedHandler(AbstractRequestHandler):
@@ -508,15 +561,16 @@ class PlaybackNearlyFinishedHandler(AbstractRequestHandler):
 
     def handle(self, handler_input):
         """ 次の曲をQueueに積む """
+        LOGGER.debug("In PlaybackNearlyFinishedHandler")
         # TODO: queue の整合性チェック
         response_builder = handler_input.response_builder
-        persistent_attributes = handler_input.attributes_manager.persistent_attributes
-        play_queue = persistent_attributes.get('play_queue', None)
-        if play_queue:
+        try:
+            persistent_attributes = handler_input.attributes_manager.persistent_attributes
+            play_queue = persistent_attributes['play_queue']
             expected_previous_token = play_queue['index']
             play_queue['index'] += 1
             play_queue['index'] %= play_queue['list'].len()
-            title_id = play_queue['queue'][play_queue['index']]
+            title_id = play_queue['list'][play_queue['index']]
             title_info = MUSIC_DB.get_title_by_id(title_id)
             meta_data = AudioItemMetadata(title=title_info['title'], subtitle=title_info['artist'])
             response_builder.add_directive(
@@ -534,6 +588,8 @@ class PlaybackNearlyFinishedHandler(AbstractRequestHandler):
             )
             play_queue['state'] = 'PLAY_REQUEST'
             handler_input.attributes_manager.save_persistent_attributes()
+        except:
+            LOGGER.error("Unexpected error: {}".format(sys.exc_info()[0]))
         return handler_input.response_builder.response
 
 
@@ -580,6 +636,8 @@ sb.add_request_handler(HelpIntentHandler())
 sb.add_request_handler(CancelOrStopIntentHandler())
 sb.add_request_handler(FallbackIntentHandler())
 sb.add_request_handler(SessionEndedRequestHandler())
+
+sb.add_request_handler(PlaybackStartedHandler())
 sb.add_request_handler(PauseIntentHandler())
 sb.add_request_handler(ResumeIntentHandler())
 sb.add_request_handler(LoopOffIntentIntentHandler())
@@ -597,8 +655,8 @@ sb.add_request_handler(PlaybackNearlyFinishedHandler())
 sb.add_exception_handler(CatchAllExceptionHandler())
 
 # TODO: Uncomment the following lines of code for request, response logs.
-#sb.add_global_request_interceptor(RequestLogger())
-#sb.add_global_response_interceptor(ResponseLogger())
+sb.add_global_request_interceptor(RequestLogger())
+sb.add_global_response_interceptor(ResponseLogger())
 
 # Handler name that is used on AWS lambda
 lambda_handler = sb.lambda_handler()

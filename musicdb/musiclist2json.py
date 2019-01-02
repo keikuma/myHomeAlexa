@@ -168,7 +168,7 @@ for m in musicList:
             titleId += 1
     if not m['title'] in titles:
         titleDict[title] = {'id': m['title_id']}
-        if re.search(r"(Karaoke|karaoke|KARAOKE|less vocal|カラオケ)", m['title']):
+        if re.search(r"(Karaoke|karaoke|KARAOKE|less vocal|カラオケ|インスト)", m['title']):
             iskaraoke = True
         else:
             iskaraoke = False
