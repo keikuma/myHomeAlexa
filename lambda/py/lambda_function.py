@@ -293,7 +293,9 @@ class PauseIntentHandler(AbstractRequestHandler):
         """ 一時停止を実装 """
         response_builder = handler_input.response_builder
         persistent_attributes = handler_input.attributes_manager.persistent_attributes
-        audio_player_state = handler_input.audio_player_state
+        audio_player_state = handler_input.request_envelope.context.audio_player
+        if audio_player_state.player_activity != PlayerActivity.PLAYING:
+            return handler_input.response_builder.response
         play_queue = persistent_attributes.get('play_queue', None)
         if play_queue:
             play_queue['offset_in_milliseconds'] = audio_player_state['offset_in_milliseconds']
@@ -311,7 +313,9 @@ class ResumeIntentHandler(AbstractRequestHandler):
         """ 再開を実装 """
         response_builder = handler_input.response_builder
         persistent_attributes = handler_input.attributes_manager.persistent_attributes
-        audio_player_state = handler_input.audio_player_state
+        audio_player_state = handler_input.request_envelope.context.audio_player
+        if audio_player_state.player_activity != PlayerActivity.PAUSED:
+            return handler_input.response_builder.response
         play_queue = persistent_attributes.get('play_queue', None)
         if play_queue:
             if play_queue['state'] and play_queue['state'] == 'PAUSED':
@@ -360,7 +364,9 @@ class NextIntentHandler(AbstractRequestHandler):
         """ 次の曲へ """
         response_builder = handler_input.response_builder
         persistent_attributes = handler_input.attributes_manager.persistent_attributes
-        audio_player_state = handler_input.audio_player_state
+        audio_player_state = handler_input.request_envelope.context.audio_player
+        if audio_player_state.player_activity != PlayerActivity.PLAYING:
+            return handler_input.response_builder.response
         play_queue = persistent_attributes.get('play_queue', None)
         if play_queue:
             play_queue['index'] += 1
@@ -393,7 +399,9 @@ class PreviousIntentHandler(AbstractRequestHandler):
         """ 前の曲へ """
         response_builder = handler_input.response_builder
         persistent_attributes = handler_input.attributes_manager.persistent_attributes
-        audio_player_state = handler_input.audio_player_state
+        audio_player_state = handler_input.request_envelope.context.audio_player
+        if audio_player_state.player_activity != PlayerActivity.PLAYING:
+            return handler_input.response_builder.response
         play_queue = persistent_attributes.get('play_queue', None)
         if play_queue:
             play_queue['index'] = play_queue['index'] + play_queue['list'].len() - 1
@@ -447,11 +455,12 @@ class StartOverIntentHandler(AbstractRequestHandler):
         return is_request_type("AMAZON.StartOverIntent")
 
     def handle(self, handler_input):
-        """ 再生を停止する (queueをどうするか) """
-        # TODO: Queue を削除した方が良いかどうか検討する
+        """ 再生を停止する """
         handler_input.response_builder.add_directive(ClearQueueDirective())
         handler_input.response_builder.add_directive(StopDirective())
         handler_input.response_builder.speak(STOP_MESSAGE)
+        persistent_attributes = handler_input.attributes_manager.persistent_attributes
+        persistent_attributes = {}
         return handler_input.response_builder.response
 
 class PlaybackFailedHandler(AbstractRequestHandler):
@@ -463,7 +472,6 @@ class PlaybackFailedHandler(AbstractRequestHandler):
         """ 再生失敗 """
         response_builder = handler_input.response_builder
         persistent_attributes = handler_input.attributes_manager.persistent_attributes
-        audio_player_state = handler_input.audio_player_state
         play_queue = persistent_attributes.get('play_queue', None)
         if play_queue and play_queue['playback_failure_count']:
             play_queue['playback_failure_count'] += 1
@@ -503,7 +511,6 @@ class PlaybackNearlyFinishedHandler(AbstractRequestHandler):
         # TODO: queue の整合性チェック
         response_builder = handler_input.response_builder
         persistent_attributes = handler_input.attributes_manager.persistent_attributes
-        audio_player_state = handler_input.audio_player_state
         play_queue = persistent_attributes.get('play_queue', None)
         if play_queue:
             expected_previous_token = play_queue['index']
