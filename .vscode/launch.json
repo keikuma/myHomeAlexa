@@ -15,7 +15,7 @@
             "envFile": "${workspaceRoot}/.env",
             "args": [
                 "-e",
-                "testevents/PlayMusic_artsit_with_id.json"
+                "testevents/PlayMusic_PlaybackStarted.json"
             ]
         },
         {
