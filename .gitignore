@@ -59,3 +59,28 @@ typings/
 
 # next.js build output
 .next
+
+# Python venv
+.venv
+lambda/py/lambda_upload
+
+# Python キャッシュ
+*.pyc
+
+# 中間ファイル
+musicdb/iTunes_list.txt
+musicdb/list.json
+musicdb/translate.json
+musicdb/word.txt
+musicdb/words.json
+
+# debug ファイル
+*-debug.*
+
+# ターゲットファイル
+models/ja-JP.json
+lambda/py/data/database.json
+lambda/py/data/simstring.db
+
+# デプロイパッケージ
+package.zip

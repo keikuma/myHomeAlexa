@@ -1,0 +1,129 @@
+{
+	"version": "1.0",
+	"session": {
+		"new": true,
+		"sessionId": "amzn1.echo-api.session.c2c0954c-7d71-475d-94b9-b27025fa8ede",
+		"application": {
+			"applicationId": "amzn1.ask.skill.a0b1402a-e4e8-4e89-816f-557992439bc5"
+		},
+		"user": {
+			"userId": "amzn1.ask.account.AH5F5D6QETJI5Z4CQO6YBD7EQKGTKGUWHZ7RN3UXP4RDE7A66LENIPCI3TZ7EGEONUA243RUJ5V67PNILIGALEZ4APOHSLKCDMAZP7JEVDBA34V7LK6KOOCCMOE7E7VH4X4YUETKR4HSKWUTSW3B7CS7XJPS4GEDNN33O6A3QORGVSQFI2Q4CMXS554SJHFINSEBLMXVNBBAHVQ"
+		}
+	},
+	"context": {
+		"AudioPlayer": {
+			"playerActivity": "IDLE"
+		},
+		"System": {
+			"application": {
+				"applicationId": "amzn1.ask.skill.a0b1402a-e4e8-4e89-816f-557992439bc5"
+			},
+			"user": {
+				"userId": "amzn1.ask.account.AH5F5D6QETJI5Z4CQO6YBD7EQKGTKGUWHZ7RN3UXP4RDE7A66LENIPCI3TZ7EGEONUA243RUJ5V67PNILIGALEZ4APOHSLKCDMAZP7JEVDBA34V7LK6KOOCCMOE7E7VH4X4YUETKR4HSKWUTSW3B7CS7XJPS4GEDNN33O6A3QORGVSQFI2Q4CMXS554SJHFINSEBLMXVNBBAHVQ"
+			},
+			"device": {
+				"deviceId": "amzn1.ask.device.AGXW3SHNLNL7X7ZN7S6PPRPZH4KYQ4IPDAO4BYAZ6CPC5Z3VYV3YMLG2Y45UPLFPQZ2XW5O6W5WCOMII6QRCYCWG66SMSI63I244Z5737HWFAVTNRTNIZEXVJVJAABBZIHQFPWEAMI56XR3A4WQBMJN74BSKXYTJHMKUBXPFUC4BPAY4IN2FE",
+				"supportedInterfaces": {
+					"AudioPlayer": {}
+				}
+			},
+			"apiEndpoint": "https://api.fe.amazonalexa.com",
+			"apiAccessToken": "eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiIsImtpZCI6IjEifQ.eyJhdWQiOiJodHRwczovL2FwaS5hbWF6b25hbGV4YS5jb20iLCJpc3MiOiJBbGV4YVNraWxsS2l0Iiwic3ViIjoiYW16bjEuYXNrLnNraWxsLmEwYjE0MDJhLWU0ZTgtNGU4OS04MTZmLTU1Nzk5MjQzOWJjNSIsImV4cCI6MTU0NjM4NDIxNCwiaWF0IjoxNTQ2MzgwNjE0LCJuYmYiOjE1NDYzODA2MTQsInByaXZhdGVDbGFpbXMiOnsiY29uc2VudFRva2VuIjpudWxsLCJkZXZpY2VJZCI6ImFtem4xLmFzay5kZXZpY2UuQUdYVzNTSE5MTkw3WDdaTjdTNlBQUlBaSDRLWVE0SVBEQU80QllBWjZDUEM1WjNWWVYzWU1MRzJZNDVVUExGUFFaMlhXNU82VzVXQ09NSUk2UVJDWUNXRzY2U01TSTYzSTI0NFo1NzM3SFdGQVZUTlJUTklaRVhWSlZKQUFCQlpJSFFGUFdFQU1JNTZYUjNBNFdRQk1KTjc0QlNLWFlUSkhNS1VCWFBGVUM0QlBBWTRJTjJGRSIsInVzZXJJZCI6ImFtem4xLmFzay5hY2NvdW50LkFINUY1RDZRRVRKSTVaNENRTzZZQkQ3RVFLR1RLR1VXSFo3Uk4zVVhQNFJERTdBNjZMRU5JUENJM1RaN0VHRU9OVUEyNDNSVUo1VjY3UE5JTElHQUxFWjRBUE9IU0xLQ0RNQVpQN0pFVkRCQTM0VjdMSzZLT09DQ01PRTdFN1ZINFg0WVVFVEtSNEhTS1dVVFNXM0I3Q1M3WEpQUzRHRUROTjMzTzZBM1FPUkdWU1FGSTJRNENNWFM1NTRTSkhGSU5TRUJMTVhWTkJCQUhWUSJ9fQ.f-zHDs6SspeV73IrDOpHpOOPLU4sE8iv8PBWixZ6AswpQDCwmOzYy1CK4yuOoNeisw2JIH8Poaaz0hvQJvPNjj_OE30GZ4Nslj9ELhCXSQ27FGE5iRQAnp9f4gykPRZ_TFF5P3Ho1Fh4GB8EA2NPoKmRSz7C-xVJMymAAEvuWTLZLVcN3RGqI9upAP8mCTN7MZNlO4MJ0UTP3yTeGqvNPX0yOtgmJElaKpQGEOPVGhaYpbbw8f2VdkX6XQizZbo_QKsup0s82AtqOCNe1U1_BJtH3v8L49fVAOQO9WIZ7hz2C8tqSz8o6u09GsXzOkWTOmAxmNa8xoXUibgx4NN8lw"
+		},
+		"Viewport": {
+			"experiences": [
+				{
+					"arcMinuteWidth": 246,
+					"arcMinuteHeight": 144,
+					"canRotate": false,
+					"canResize": false
+				}
+			],
+			"shape": "RECTANGLE",
+			"pixelWidth": 1024,
+			"pixelHeight": 600,
+			"dpi": 160,
+			"currentPixelWidth": 1024,
+			"currentPixelHeight": 600,
+			"touch": [
+				"SINGLE"
+			]
+		}
+	},
+	"request": {
+		"type": "IntentRequest",
+		"requestId": "amzn1.echo-api.request.dbfb54e8-39b4-41e2-8905-0d7e0b32da79",
+		"timestamp": "2019-01-01T22:10:14Z",
+		"locale": "ja-JP",
+		"intent": {
+			"name": "PlayMusicIntent",
+			"confirmationStatus": "NONE",
+			"slots": {
+				"Artist": {
+					"name": "Artist",
+					"value": "クラリス",
+					"resolutions": {
+						"resolutionsPerAuthority": [
+							{
+								"authority": "amzn1.er-authority.echo-sdk.amzn1.ask.skill.a0b1402a-e4e8-4e89-816f-557992439bc5.ArtistList",
+								"status": {
+									"code": "ER_SUCCESS_MATCH"
+								},
+								"values": [
+									{
+										"value": {
+											"name": "ClariS",
+											"id": "f3688ad9-cd14-4cee-8fa0-0f4434e762bb"
+										}
+									}
+								]
+							}
+						]
+					},
+					"confirmationStatus": "NONE",
+					"source": "USER"
+				},
+				"Title": {
+					"name": "Title",
+					"value": "コネクト",
+					"resolutions": {
+						"resolutionsPerAuthority": [
+							{
+								"authority": "amzn1.er-authority.echo-sdk.amzn1.ask.skill.a0b1402a-e4e8-4e89-816f-557992439bc5.TitleList",
+								"status": {
+									"code": "ER_SUCCESS_MATCH"
+								},
+								"values": [
+									{
+										"value": {
+											"name": "コネクト",
+											"id": "d7a1d8dc-16c9-4a8e-a654-a7fdbf47aa15"
+										}
+									},
+									{
+										"value": {
+											"name": "コネクト -ゲームインスト-",
+											"id": "a3065d0d-990d-4f93-ab05-470e47ae31a1"
+										}
+									},
+									{
+										"value": {
+											"name": "Construct Connect",
+											"id": "101be687-7c41-4360-86a4-5967f18f6ac8"
+										}
+									}
+								]
+							}
+						]
+					},
+					"confirmationStatus": "NONE",
+					"source": "USER"
+				},
+				"Album": {
+					"name": "Album",
+					"confirmationStatus": "NONE"
+				}
+			}
+		}
+	}
+}
