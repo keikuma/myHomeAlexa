@@ -27,6 +27,18 @@
             "cwd": "${workspaceRoot}",
             "env": {},
             "envFile": "${workspaceRoot}/.env",
+            "args": [
+                "-i",
+                "musicdb/list.json",
+                "-o",
+                "models/ja-JP.json",
+                "-s",
+                "\"おうちサーバー\"",
+                "-d",
+                "lambda/py/data/database.json",
+                "--pickle",
+                "lambda/py/data/simstring.db"
+            ]
         },
         {
             "name": "Python: Attach",

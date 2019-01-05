@@ -197,4 +197,4 @@ else:
         entry['yomi'] = yomi
     data = {'artist': artistDict, 'album': albumDict, 'title': titleDict, 'music': musicDict}
     with open(args.output, "wt", encoding='utf-8', newline='\n') as f:
-        json.dump(data, f, ensure_ascii=False, sort_keys=True)
+        json.dump(data, f, ensure_ascii=False, sort_keys=True, indent=4)

@@ -190,19 +190,25 @@ class PlayMusicHandler(AbstractRequestHandler):
                 if play_list['list']:
                     play_queue = {'info': play_list, 'list': play_list['list'], 'index': 0, 'state': 'PLAY_REQUEST', 'playback_failure_count': 0}
                 if play_list['type'] == 'artist':
+                    yomi = play_list['artist']['name'].get('yomi', None)
+                    if not yomi:
+                        yomi = build_ssml_from_item_name(play_list['artist']['name']['value'])
                     if play_list['list']:
-                        speech = '{} の楽曲をシャッフル再生します。'.format(build_ssml_from_item_name(play_list['artist']['name']['value']))
+                        speech = '{} の楽曲をシャッフル再生します。'.format(yomi)
                         response_builder.speak(speech)
                     else:
-                        speech = '{} の楽曲は見つかりませんでした。'
+                        speech = '{} の楽曲は見つかりませんでした。'.format(yomi)
                         play_queue = None
                         response_builder.speak(speech)
                 elif play_list['type'] == 'album':
+                    yomi = play_list['album']['name'].get('yomi', None)
+                    if not yomi:
+                        yomi = build_ssml_from_item_name(play_list['album']['name']['value'])
                     if play_list['list']:
-                        speech = 'アルバム {} を再生します。'.format(build_ssml_from_item_name(play_list['album']['name']['value']))
+                        speech = 'アルバム {} を再生します。'.format(yomi)
                         response_builder.speak(speech)
                     else:
-                        speech = 'アルバム {} は見つかりませんでした。'.format(build_ssml_from_item_name(play_list['album']['name']['value']))
+                        speech = 'アルバム {} は見つかりませんでした。'.format(yomi)
                         response_builder.speak(speech)
                 elif play_list['type'] == 'title':
                     if play_list['list']:
@@ -238,9 +244,15 @@ class QueryTitleIntentHandler(AbstractRequestHandler):
                 artist_info = MUSIC_DB.get_artist_by_id(title_info['artist_id'])
                 speech = ""
                 if artist_info:
-                    speech += build_ssml_from_item_name(artist_info['name']['value']) + " で、"
+                    artist_yomi = artist_info['name'].get('yomi', None)
+                    if not artist_yomi:
+                        artist_yomi = build_ssml_from_item_name(artist_info['name']['value'])
+                    speech += artist_yomi + " で、"
                 if album_info:
-                    speech += build_ssml_from_item_name(album_info['name']['value']) + " に収録の、"
+                    album_yomi = album_info['name']['yomi']
+                    if not album_yomi:
+                        album_yomi = build_ssml_from_item_name(album_info['name']['value'])
+                    speech += album_yomi + " に収録の、"
                 if title_info:
                     speech += build_ssml_from_item_name(title_info['title']) + " です。"
                 response_builder.speak(speech)
@@ -568,7 +580,8 @@ class PlaybackFailedHandler(AbstractRequestHandler):
                 handler_input.response_builder.add_directive(StopDirective())
                 handler_input.response_builder.speak('再生できませんでした')
             elif play_queue:
-                play_queue['index'] += 1
+                # 失敗した楽曲を削除
+                play_queue['list'].remove(handler_input.request_envelope.request.token)
                 play_queue['index'] %= len(play_queue['list'])
                 play_from_queue(handler_input)
                 play_queue['state'] = 'PLAY_REQUEST'
@@ -645,6 +658,7 @@ sb.add_request_handler(SessionEndedRequestHandler())
 
 sb.add_request_handler(PlaybackStartedHandler())
 sb.add_request_handler(PlaybackFinishedHandler())
+sb.add_request_handler(PlaybackStoppedHandler())
 sb.add_request_handler(PauseIntentHandler())
 sb.add_request_handler(ResumeIntentHandler())
 sb.add_request_handler(LoopOffIntentIntentHandler())

@@ -77,6 +77,7 @@ def create_model():
                         MY_NAME + "で {Artist} の楽曲を再生して",
                         MY_NAME + "で {Album} をかけて",
                         MY_NAME + "で {Album} を再生して",
+                        MY_NAME + "で {Album} のCDを",
                         MY_NAME + "で {Artist} のアルバム {Album} をかけて",
                         MY_NAME + "で {Artist} のアルバム {Album} を再生して",
                         MY_NAME + "で {Artist} のアルバム {Album} をシャッフル再生して",
@@ -90,6 +91,7 @@ def create_model():
                         "{Artist} の楽曲を再生して",
                         "{Album} をかけて",
                         "{Album} を再生して",
+                        "{Album} のCDを",
                         "{Artist} のアルバム {Album} をかけて",
                         "{Artist} のアルバム {Album} を再生して",
                         "{Artist} のアルバム {Album} をシャッフル再生して",
@@ -239,6 +241,12 @@ def yomi_normalize(s):
     s = re.sub(r'ッ', r'', s)
     return s
 
+def is_japanese(s):
+    """ 日本語タイトルかどうかを判定 """
+    if re.search(r"[^\x01-\x7E]", s):
+        return True
+    return False
+
 artistdict = mdb['artist']
 albumdict = mdb['album']
 titledict = mdb['title']
@@ -291,8 +299,8 @@ with open(args.output, 'wt', encoding='utf-8', newline='\n') as f:
 
 if args.database:
     # idからインデックスする辞書として、musicdbを作る
-    musicdb = {'artist': defaultdict(lambda: {'name':'', 'album': set(), 'title': set()}),
-               'album': defaultdict(lambda: {'name': '', 'title': set()}),
+    musicdb = {'artist': defaultdict(lambda: {'name':{}, 'album': set(), 'title': set()}),
+               'album': defaultdict(lambda: {'name':{}, 'title': set()}),
                'title': {}}
     for item_id, entry in artistid.items():
         musicdb['artist'][item_id] = {'name': entry['name'], 'album': set(), 'title': set()}
@@ -312,6 +320,19 @@ if args.database:
     for entry in musicdb['artist'].values():
         entry['album'] = list(entry['album'])
         entry['title'] = list(entry['title'])
+        # タイトルの1割以上が日本語を含んでいたら、日本語読みを付与
+        title_num = len(entry['title'])
+        japanese_cnt = 0
+        if entry['name'].get('value', None):
+            for title_id in entry['title']:
+                if is_japanese(musicdb['title'][title_id]['title']):
+                    japanese_cnt += 1
+                    if japanese_cnt > title_num / 10:
+                        yomi = artistdict.get(entry['name']['value'], {}).get('yomi', None)
+                        if yomi:
+                            entry['name']['yomi'] = yomi
+                        break
+
     for entry in musicdb['album'].values():
         sort_temp = sorted(entry['title'], key=lambda id: musicdb['title'][id]['track'])
         entry['title'] = sorted(sort_temp, key=lambda id: musicdb['title'][id]['disc'])
